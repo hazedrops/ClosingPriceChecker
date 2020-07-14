@@ -4,9 +4,10 @@ from datetime import date, datetime, timedelta
 import yfinance as yf
 import bs4
 from urllib.request import urlopen as uReq
-from bs4 import BeautifulSoup as soup
-import pickle
 import requests
+from requests.exceptions import HTTPError
+from bs4 import BeautifulSoup as soup
+# import pickle
 import mysql.connector
 
 mydb = mysql.connector.connect(
@@ -18,21 +19,30 @@ mydb = mysql.connector.connect(
 
 mycursor = mydb.cursor()
 
-my_url = 'http://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+response = requests.get(
+    'https://en.wikipedia.org/wiki/NASDAQ-100#Changes_in_2020')
 
 first_price = 0
 saved_price = 0
 
-# Opening up connection, grabbing the page
-uClient = uReq(my_url)
-page_html = uClient.read()
-uClient.close()
+if response.status_code == 200:
+    print('Web site exists')
+else:
+    print('Web site does not exist')
 
-# HTML parsing
+page_html = response.content
+# print(page_html)
+
 page_soup = soup(page_html, "html.parser")
+# print(page_soup)
 
-# Grab the s&p 500 table & table rows
-sp_table = page_soup.find("table", attrs={"class": "wikitable"})
+# Grab the Nasdaq 100 table & table rows
+rows = page_soup.find(
+    'table', id="constituents").find('tbody').findAll('tr')[1:]
+
+
+# print(nasdaq_table)
+print(rows)
 
 # Company class
 
@@ -46,11 +56,15 @@ class companies:
 # creating list
 company_list = []
 
-for row in sp_table.findAll('tr')[1:]:
-    tk = row.findAll('td')[0].a.text
-    c_name = row.findAll('td')[1].a.text
+for row in rows:
 
-    company_list.append(companies(tk, c_name))
+    c_name = row.findAll('td')[:1][0].text.rstrip()
+    c_tkr = row.findAll('td')[1:][0].text.rstrip()
+
+    # print(c_name)
+    # print(c_tkr)
+
+    company_list.append(companies(c_tkr, c_name))
 
 length = len(company_list)
 
@@ -60,11 +74,11 @@ for i in range(length):
     symbol = yf.Ticker(company_list[i].ticker)
 
     # If there's no data found, skip to the next iteration
-    if symbol.history(period="6d").empty:
+    if symbol.history(period="5d").empty:
         continue
 
     close_price = pd.to_numeric(symbol.history(
-        period="6d").Close.array)
+        period="5d").Close.array)
 
     day_count = 0
     first_price = close_price[0]
@@ -83,15 +97,10 @@ for i in range(length):
             day_count = 0
             lowest_price = price
 
-    if day_count == 6:
-        # print("The price dropped for 5 days!!!")
-        # print(ticker)
-        # print("lowest_price is " + str(lowest_price))
-        # print("day_count is " + str(day_count))
-
+    if day_count == 5:
         per_drop = (first_price - price) / first_price * 100
 
-        sql = "INSERT INTO price_info (Ticker, Company, first_close, last_close, dec_percent ) VALUES (%s, %s, %s, %s, %s)"
+        sql = "INSERT INTO nasdaq_price_info (Ticker, Company, first_close, last_close, dec_percent ) VALUES (%s, %s, %s, %s, %s)"
         val = (company_list[i].ticker, company_list[i].company,
                float(first_price), float(price), float(per_drop))
         mycursor.execute(sql, val)
