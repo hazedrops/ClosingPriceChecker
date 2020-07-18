@@ -5,9 +5,9 @@ import yfinance as yf
 import bs4
 from urllib.request import urlopen as uReq
 from bs4 import BeautifulSoup as soup
-import pickle
 import requests
 import mysql.connector
+import csv
 
 mydb = mysql.connector.connect(
     host="localhost",
@@ -18,21 +18,8 @@ mydb = mysql.connector.connect(
 
 mycursor = mydb.cursor()
 
-my_url = 'http://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-
 first_price = 0
 saved_price = 0
-
-# Opening up connection, grabbing the page
-uClient = uReq(my_url)
-page_html = uClient.read()
-uClient.close()
-
-# HTML parsing
-page_soup = soup(page_html, "html.parser")
-
-# Grab the s&p 500 table & table rows
-sp_table = page_soup.find("table", attrs={"class": "wikitable"})
 
 # Company class
 
@@ -46,25 +33,38 @@ class companies:
 # creating list
 company_list = []
 
-for row in sp_table.findAll('tr')[1:]:
-    tk = row.findAll('td')[0].a.text
-    c_name = row.findAll('td')[1].a.text
+with open('companylistNasdaq.csv', 'r') as csvfile:
 
-    company_list.append(companies(tk, c_name))
+    readCSV = csv.reader(csvfile, delimiter=',')
+    next(readCSV)
+
+    for col in readCSV:
+        tk = col[0]
+        c_name = col[1]
+        # print(tk + " + " + c_name)
+        company_list.append(companies(tk, c_name))
 
 length = len(company_list)
+
+# # Get the date of 100 day ago
+# p = datetime.today() - timedelta(days=100)
 
 for i in range(length):
     print(company_list[i].ticker + " : " + company_list[i].company)
 
     symbol = yf.Ticker(company_list[i].ticker)
 
+    # past_price = pd.to_numeric(symbol.history(
+    #     period='1d', start=p, end=p)['Close'].Close_price)
+
+    # print(past_price)
+
     # If there's no data found, skip to the next iteration
-    if symbol.history(period="6d").empty:
+    if symbol.history(period="5d").empty:
         continue
 
     close_price = pd.to_numeric(symbol.history(
-        period="6d").Close.array)
+        period="5d").Close.array)
 
     day_count = 0
     first_price = close_price[0]
@@ -83,7 +83,7 @@ for i in range(length):
             day_count = 0
             lowest_price = price
 
-    if day_count == 6:
+    if day_count == 5:
         # print("The price dropped for 5 days!!!")
         # print(ticker)
         # print("lowest_price is " + str(lowest_price))
@@ -91,11 +91,13 @@ for i in range(length):
 
         per_drop = (first_price - price) / first_price * 100
 
-        sql = "INSERT INTO price_info (Ticker, Company, first_close, last_close, dec_percent ) VALUES (%s, %s, %s, %s, %s)"
-        val = (company_list[i].ticker, company_list[i].company,
-               float(first_price), float(price), float(per_drop))
-        mycursor.execute(sql, val)
+        if per_drop >= 3:
+            sql = "INSERT INTO nasdaq_price_info (Ticker, Company, first_close, last_close, dec_percent ) VALUES (%s, %s, %s, %s, %s)"
+            val = (company_list[i].ticker, company_list[i].company,
+                   float(first_price), float(price), float(per_drop))
+            mycursor.execute(sql, val)
 
-        mydb.commit()
+            mydb.commit()
 
-print(mycursor.rowcount, "record inserted.")
+if mycursor.rowcount == -1:
+    print("0 record inserted!")
