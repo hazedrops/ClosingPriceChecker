@@ -33,7 +33,7 @@ class companies:
 # creating list
 company_list = []
 
-with open('companylistNasdaq.csv', 'r') as csvfile:
+with open('companylist.csv', 'r') as csvfile:
 
     readCSV = csv.reader(csvfile, delimiter=',')
     next(readCSV)
@@ -60,17 +60,18 @@ for i in range(length):
     # print(past_price)
 
     # If there's no data found, skip to the next iteration
-    if symbol.history(period="5d").empty:
+    if symbol.history(period="8d").empty:
         continue
 
     close_price = pd.to_numeric(symbol.history(
-        period="5d").Close.array)
+        period="8d").Close.array)
 
     day_count = 0
     first_price = close_price[0]
     lowest_price = first_price
 
     for index, price in enumerate(close_price, start=0):
+
         print(index, price)
 
         # If price of the next day dropped, then increse the count by 1, and save the price as the lowest price
@@ -81,20 +82,22 @@ for i in range(length):
         # else start count from 0 again, and save the lowest_price as the day's price!!!
         else:
             day_count = 0
+            first_price = price
             lowest_price = price
 
-    if day_count == 5:
+    if day_count >= 4:
         # print("The price dropped for 5 days!!!")
         # print(ticker)
         # print("lowest_price is " + str(lowest_price))
         # print("day_count is " + str(day_count))
+        print(day_count)
 
         per_drop = (first_price - price) / first_price * 100
 
         if per_drop >= 3:
-            sql = "INSERT INTO nasdaq_price_info (Ticker, Company, first_close, last_close, dec_percent ) VALUES (%s, %s, %s, %s, %s)"
+            sql = "INSERT INTO price_info (Ticker, Company, first_close, last_close, dec_percent, days) VALUES (%s, %s, %s, %s, %s, %s)"
             val = (company_list[i].ticker, company_list[i].company,
-                   float(first_price), float(price), float(per_drop))
+                   float(first_price), float(price), float(per_drop), int(day_count))
             mycursor.execute(sql, val)
 
             mydb.commit()

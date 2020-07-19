@@ -77,11 +77,11 @@ for i in range(length):
     # print(past_price)
 
     # If there's no data found, skip to the next iteration
-    if symbol.history(period="5d").empty:
+    if symbol.history(period="8d").empty:
         continue
 
     close_price = pd.to_numeric(symbol.history(
-        period="5d").Close.array)
+        period="8d").Close.array)
 
     day_count = 0
     first_price = close_price[0]
@@ -99,8 +99,9 @@ for i in range(length):
         else:
             day_count = 0
             lowest_price = price
+            first_price = price
 
-    if day_count == 5:
+    if day_count >= 5:
         # print("The price dropped for 5 days!!!")
         # print(ticker)
         # print("lowest_price is " + str(lowest_price))
@@ -110,7 +111,7 @@ for i in range(length):
 
         if per_drop >= 3:
 
-            sql = "INSERT INTO price_info (Ticker, Company, first_close, last_close, dec_percent ) VALUES (%s, %s, %s, %s, %s)"
+            sql = "INSERT INTO nyse_price_info (Ticker, Company, first_close, last_close, dec_percent ) VALUES (%s, %s, %s, %s, %s)"
             val = (company_list[i].ticker, company_list[i].company,
                    float(first_price), float(price), float(per_drop))
             mycursor.execute(sql, val)
