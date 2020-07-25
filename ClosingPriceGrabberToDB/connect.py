@@ -18,7 +18,8 @@ sql1 = "DROP TABLE price_info;"
 
 # mycursor.execute(sql1)
 
-sql2 = "CREATE TABLE IF NOT EXISTS price_info (ID int AUTO_INCREMENT PRIMARY KEY, Ticker VARCHAR(255), Company VARCHAR(255), first_close FLOAT(4), last_close FLOAT(4), dec_percent FLOAT(4), days INT(3));"
+sql2 = "CREATE TABLE IF NOT EXISTS price_info(ID int AUTO_INCREMENT PRIMARY KEY, Ticker VARCHAR(255), Company VARCHAR(255), first_close FLOAT(4), last_close FLOAT(4), dec_percent FLOAT(4), days INT(3), market_cap INT(8), average_vol INT(8));"
+# );"
 # sql4 = "CREATE TABLE IF NOT EXISTS nasdaq_price_info (ID int AUTO_INCREMENT PRIMARY KEY, Ticker VARCHAR(255), Company VARCHAR(255), first_close FLOAT(4), last_close FLOAT(4), dec_percent FLOAT(4));"
 # sql6 = "CREATE TABLE IF NOT EXISTS dow_price_info (ID int AUTO_INCREMENT PRIMARY KEY, Ticker VARCHAR(255), Company VARCHAR(255), first_close FLOAT(4), last_close FLOAT(4), dec_percent FLOAT(4));"
 
